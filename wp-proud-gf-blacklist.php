@@ -76,8 +76,11 @@ class Proudcity_GF_Blacklist{
 			return $is_spam;
 		}
 
+		//update_option( 'sfn_test', rgar( $entry, '2' ) );
+
 		// blacklisting this user
-		if ( rgar( $entry, '2' ) == 	's1evan9ctc9gbh5i@aol.com ' ){
+		if ( rgar( $entry, '2' ) ==  's1evan9ctc9gbh5i@aol.com' ){
+			//update_option( 'sfn_test', 'is spam');
 			return true;
 		}
 
