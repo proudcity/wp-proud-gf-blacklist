@@ -95,7 +95,8 @@ class Proudcity_GF_Blacklist
         $emails = array( 's1evan9ctc9gbh5i@aol.com' );
 
         if (getenv('PC_GF_EMAIL_BLACKLIST')) {
-            $emails = getenv('PC_GF_EMAIL_BLACKLIST');
+            $intoArray = explode(',', getenv('PC_GF_EMAIL_BLACKLIST'));
+            $emails = $intoArray;
         }
 
         //update_option( 'sfn_test', rgar( $entry, '2' ) );
