@@ -3,7 +3,7 @@
 Plugin Name: WP Proud Gravity Forms Blacklist
 Plugin URI: https://proudcity.com
 Description: Quick and dirty black list plugin for GF
-Version: 2023.09.20
+Version: 2025.02.11.1044
 Author: ProudCity
 Author URI: https://proudcity.com
 License: GPLv2 or later
@@ -71,6 +71,16 @@ class Proudcity_GF_Blacklist
 
     } // init
 
+    /**
+     * Checks fields for specified emails to blacklist them
+     *
+     * @since 2025.02.11
+     * @author Curtis
+     *
+     * @param bool   $is_spam required   If the form has already been marked as spam
+     * @param object $form    The whole form object
+     * @param array  $entry   The form entry we're looknig at
+     */
     public static function blacklist($is_spam, $form, $entry)
     {
 
@@ -79,13 +89,33 @@ class Proudcity_GF_Blacklist
             return $is_spam;
         }
 
-        //update_option( 'sfn_test', rgar( $entry, '2' ) );
+        // don't remember the original client that has this so their
+        // original blocked email is default if nothing is defined
+        // in the workload env files.
+        $emails = array( 's1evan9ctc9gbh5i@aol.com' );
 
-        // blacklisting this user
-        if (rgar($entry, '2') ==  's1evan9ctc9gbh5i@aol.com') {
-            //update_option( 'sfn_test', 'is spam');
-            return true;
+        if (getenv('PC_GF_EMAIL_BLACKLIST')) {
+            $emails = getenv('PC_GF_EMAIL_BLACKLIST');
         }
+
+        //update_option( 'sfn_test', rgar( $entry, '2' ) );
+        //
+        foreach ($form['fields'] as $field) {
+
+            // skip admin fields or anything no email field type
+            if ($field->is_administrative() || ! in_array($field->get_input_type(), array( 'email'))) {
+                continue;
+            }
+
+            $field_value = $field->get_value_export($entry);
+
+            if (in_array($field_value, $emails)) {
+                return true;
+            }
+        }
+
+        // if not caught before this the thing is not spam
+        return false;
 
     } // blacklist
 
