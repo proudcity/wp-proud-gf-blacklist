@@ -25,115 +25,123 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-class Proudcity_GF_Blacklist{
+class Proudcity_GF_Blacklist
+{
+    private static $instance;
 
-	private static $instance;
+    /**
+     * Spins up the instance of the plugin so that we don't get many instances running at once
+     *
+     * @since 1.0
+     * @author SFNdesign, Curtis McHale
+     *
+     * @uses $instance->init()                      The main get it running function
+     */
+    public static function instance()
+    {
 
-	/**
-	 * Spins up the instance of the plugin so that we don't get many instances running at once
-	 *
-	 * @since 1.0
-	 * @author SFNdesign, Curtis McHale
-	 *
-	 * @uses $instance->init()                      The main get it running function
-	 */
-	public static function instance(){
+        if (! self::$instance) {
+            self::$instance = new Proudcity_GF_Blacklist();
+            self::$instance->init();
+        }
 
-		if ( ! self::$instance ){
-			self::$instance = new Proudcity_GF_Blacklist();
-			self::$instance->init();
-		}
+    } // instance
 
-	} // instance
+    /**
+     * Spins up all the actions/filters in the plugin to really get the engine running
+     *
+     * @since 1.0
+     * @author SFNdesign, Curtis McHale
+     *
+     * @uses $this->constants()                 Defines our constants
+     * @uses $this->includes()                  Gets any includes we have
+     */
+    public function init()
+    {
 
-	/**
-	 * Spins up all the actions/filters in the plugin to really get the engine running
-	 *
-	 * @since 1.0
-	 * @author SFNdesign, Curtis McHale
-	 *
-	 * @uses $this->constants()                 Defines our constants
-	 * @uses $this->includes()                  Gets any includes we have
-	 */
-	public function init(){
+        $this->constants();
+        $this->includes();
 
-		$this->constants();
-		$this->includes();
+        add_filter('gform_entry_is_spam', array( $this, 'blacklist' ), 10, 3);
 
-		add_filter( 'gform_entry_is_spam', array( $this, 'blacklist' ), 10, 3 );
+        // Register hooks that are fired when the plugin is activated, deactivated, and uninstalled, respectively.
+        register_activation_hook(__FILE__, array( $this, 'activate' ));
+        register_deactivation_hook(__FILE__, array( $this, 'deactivate' ));
+        register_uninstall_hook(__FILE__, array( __CLASS__, 'uninstall' ));
 
-		// Register hooks that are fired when the plugin is activated, deactivated, and uninstalled, respectively.
-		register_activation_hook( __FILE__, array( $this, 'activate' ) );
-		register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
-		register_uninstall_hook( __FILE__, array( __CLASS__, 'uninstall' ) );
+    } // init
 
-	} // init
+    public static function blacklist($is_spam, $form, $entry)
+    {
 
-	public static function blacklist( $is_spam, $form, $entry ){
+        // already spam
+        if ($is_spam) {
+            return $is_spam;
+        }
 
-		// already spam
-		if ( $is_spam ){
-			return $is_spam;
-		}
+        //update_option( 'sfn_test', rgar( $entry, '2' ) );
 
-		//update_option( 'sfn_test', rgar( $entry, '2' ) );
+        // blacklisting this user
+        if (rgar($entry, '2') ==  's1evan9ctc9gbh5i@aol.com') {
+            //update_option( 'sfn_test', 'is spam');
+            return true;
+        }
 
-		// blacklisting this user
-		if ( rgar( $entry, '2' ) ==  's1evan9ctc9gbh5i@aol.com' ){
-			//update_option( 'sfn_test', 'is spam');
-			return true;
-		}
+    } // blacklist
 
-	} // blacklist
+    /**
+     * Gives us any constants we need in the plugin
+     *
+     * @since 1.0
+     */
+    public function constants()
+    {
 
-	/**
-	 * Gives us any constants we need in the plugin
-	 *
-	 * @since 1.0
-	 */
-	public function constants(){
+        define('PC_GF_BLACK_PLUGIN_DIR', plugin_dir_path(__FILE__));
 
-		define( 'PC_GF_BLACK_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+    }
 
-	}
+    /**
+     * Includes any externals
+     *
+     * @since 1.0
+     * @author SFNdesign, Curtis McHale
+     * @access public
+     */
+    public function includes()
+    {
 
-	/**
-	 * Includes any externals
-	 *
-	 * @since 1.0
-	 * @author SFNdesign, Curtis McHale
-	 * @access public
-	 */
-	public function includes(){
+    }
 
-	}
+    /**
+     * Fired when plugin is activated
+     *
+     * @param   bool    $network_wide   TRUE if WPMU 'super admin' uses Network Activate option
+     */
+    public function activate($network_wide)
+    {
 
-	/**
-	 * Fired when plugin is activated
-	 *
-	 * @param   bool    $network_wide   TRUE if WPMU 'super admin' uses Network Activate option
-	 */
-	public function activate( $network_wide ){
+    } // activate
 
-	} // activate
+    /**
+     * Fired when plugin is deactivated
+     *
+     * @param   bool    $network_wide   TRUE if WPMU 'super admin' uses Network Activate option
+     */
+    public function deactivate($network_wide)
+    {
 
-	/**
-	 * Fired when plugin is deactivated
-	 *
-	 * @param   bool    $network_wide   TRUE if WPMU 'super admin' uses Network Activate option
-	 */
-	public function deactivate( $network_wide ){
+    } // deactivate
 
-	} // deactivate
+    /**
+     * Fired when plugin is uninstalled
+     *
+     * @param   bool    $network_wide   TRUE if WPMU 'super admin' uses Network Activate option
+     */
+    public function uninstall($network_wide)
+    {
 
-	/**
-	 * Fired when plugin is uninstalled
-	 *
-	 * @param   bool    $network_wide   TRUE if WPMU 'super admin' uses Network Activate option
-	 */
-	public function uninstall( $network_wide ){
-
-	} // uninstall
+    } // uninstall
 
 } // Proudcity_GF_Blacklist
 
