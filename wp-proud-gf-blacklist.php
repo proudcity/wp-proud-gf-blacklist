@@ -3,7 +3,7 @@
 Plugin Name: WP Proud Gravity Forms Blacklist
 Plugin URI: https://proudcity.com
 Description: Quick and dirty black list plugin for GF
-Version: 2025.02.11.1044
+Version: 2025.02.11.1059
 Author: ProudCity
 Author URI: https://proudcity.com
 License: GPLv2 or later

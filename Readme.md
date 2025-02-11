@@ -1,3 +1,6 @@
-This is just an initial pass at a blacklist plugin for a specific user in GF. This works for one form and one field in that form only.
+Allows us to define `PC_GF_EMAIL_BLACKLIST` in our workload file and block the emails listed. The form will look like it was filled out but the entry is automatically sent to spam so the spammer is wasting their time.
 
-- [ ] build proper GF black list plugin that lets users pick the field and define what should blacklist an entry
+```yaml
+  name: PC_GF_EMAIL_BLACKLIST
+- value: email@one.com,email@two.com
+```
