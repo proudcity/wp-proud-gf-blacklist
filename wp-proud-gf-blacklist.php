@@ -89,9 +89,19 @@ class Proudcity_GF_Blacklist
             return $is_spam;
         }
 
-        // don't remember the original client that has this so their
-        // original blocked email is default if nothing is defined
-        // in the workload env files.
+        // domains are defined in the site yaml deploy file
+        // - name: PC_GF_DOMAIN_BLACKLIST
+        //   value: "domain.com, domain2.com"
+        $domains = array('marincounty.gov');
+
+        if (getenv('PC_GF_DOMAIN_BLACKLIST')) {
+            $intoArray = explode(',', getenv('PC_GF_DOMAIN_BLACKLIST'));
+            $domains = $intoArray;
+        }
+
+        // domains are defined in the site yaml deploy file
+        // - name: PC_GF_EMAIL_BLACKLIST
+        //   value: "email@domain.com, email@domain2.com"
         $emails = array( 's1evan9ctc9gbh5i@aol.com' );
 
         if (getenv('PC_GF_EMAIL_BLACKLIST')) {
@@ -113,7 +123,19 @@ class Proudcity_GF_Blacklist
             if (in_array($field_value, $emails)) {
                 return true;
             }
-        }
+
+            // don't bother checking if the constant was never defined
+            if (!empty($domains)) {
+                // Check domain blacklist
+                $parts = explode('@', $field_value);
+                if (count($parts) === 2) {
+                    $domain = strtolower($parts[1]);
+                    if (in_array($domain, $domains, true)) {
+                        return true;
+                    }
+                }
+            }
+        } // foreach
 
         // if not caught before this the thing is not spam
         return false;
