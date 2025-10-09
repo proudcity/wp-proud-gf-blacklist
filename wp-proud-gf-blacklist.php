@@ -3,7 +3,7 @@
 Plugin Name: WP Proud Gravity Forms Blacklist
 Plugin URI: https://proudcity.com
 Description: Quick and dirty black list plugin for GF
-Version: 2025.02.11.1059
+Version: 2025.10.09.1133
 Author: ProudCity
 Author URI: https://proudcity.com
 License: GPLv2 or later
@@ -91,17 +91,17 @@ class Proudcity_GF_Blacklist
 
         // domains are defined in the site yaml deploy file
         // - name: PC_GF_DOMAIN_BLACKLIST
-        //   value: "domain.com, domain2.com"
-        $domains = array('marincounty.gov');
+        //   value: domain.com, domain2.com
+        $domains = array();
 
         if (getenv('PC_GF_DOMAIN_BLACKLIST')) {
             $intoArray = explode(',', getenv('PC_GF_DOMAIN_BLACKLIST'));
-            $domains = $intoArray;
+            $domains = array_map('strtolower', array_map('trim', $domains)); // normalize
         }
 
         // domains are defined in the site yaml deploy file
         // - name: PC_GF_EMAIL_BLACKLIST
-        //   value: "email@domain.com, email@domain2.com"
+        //   value: email@domain.com, email@domain2.com
         $emails = array( 's1evan9ctc9gbh5i@aol.com' );
 
         if (getenv('PC_GF_EMAIL_BLACKLIST')) {
