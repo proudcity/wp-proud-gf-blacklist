@@ -102,7 +102,7 @@ class Proudcity_GF_Blacklist
         // domains are defined in the site yaml deploy file
         // - name: PC_GF_EMAIL_BLACKLIST
         //   value: email@domain.com, email@domain2.com
-        $emails = array( 's1evan9ctc9gbh5i@aol.com' );
+        $emails = array( 'spam@test.com' );
 
         if (getenv('PC_GF_EMAIL_BLACKLIST')) {
             $intoArray = explode(',', getenv('PC_GF_EMAIL_BLACKLIST'));
