@@ -2,7 +2,7 @@
 /*
 Plugin Name: WP Proud Gravity Forms Blacklist
 Plugin URI: https://proudcity.com
-Description: Quick and dirty black list plugin for GF
+Description: Blacklist individual emails or domains in Gravity Forms
 Version: 2025.10.09.1133
 Author: ProudCity
 Author URI: https://proudcity.com
