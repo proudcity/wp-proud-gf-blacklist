@@ -3,7 +3,7 @@
 Plugin Name: WP Proud Gravity Forms Blacklist
 Plugin URI: https://proudcity.com
 Description: Blacklist individual emails or domains in Gravity Forms
-Version: 2025.10.09.1133
+Version: 2026.11.06.1
 Author: ProudCity
 Author URI: https://proudcity.com
 License: GPLv2 or later
@@ -95,8 +95,7 @@ class Proudcity_GF_Blacklist
         $domains = array();
 
         if (getenv('PC_GF_DOMAIN_BLACKLIST')) {
-            $intoArray = explode(',', getenv('PC_GF_DOMAIN_BLACKLIST'));
-            $domains = array_map('strtolower', array_map('trim', $domains)); // normalize
+            $domains = self::parse_list(getenv('PC_GF_DOMAIN_BLACKLIST'));
         }
 
         // domains are defined in the site yaml deploy file
@@ -105,8 +104,7 @@ class Proudcity_GF_Blacklist
         $emails = array( 'spam@test.com' );
 
         if (getenv('PC_GF_EMAIL_BLACKLIST')) {
-            $intoArray = explode(',', getenv('PC_GF_EMAIL_BLACKLIST'));
-            $emails = $intoArray;
+            $emails = self::parse_list(getenv('PC_GF_EMAIL_BLACKLIST'));
         }
 
         //update_option( 'sfn_test', rgar( $entry, '2' ) );
@@ -118,9 +116,13 @@ class Proudcity_GF_Blacklist
                 continue;
             }
 
-            $field_value = $field->get_value_export($entry);
+            $field_value = strtolower(trim((string) $field->get_value_export($entry)));
 
-            if (in_array($field_value, $emails)) {
+            if ('' === $field_value) {
+                continue;
+            }
+
+            if (in_array($field_value, $emails, true)) {
                 return true;
             }
 
@@ -129,7 +131,7 @@ class Proudcity_GF_Blacklist
                 // Check domain blacklist
                 $parts = explode('@', $field_value);
                 if (count($parts) === 2) {
-                    $domain = strtolower($parts[1]);
+                    $domain = $parts[1];
                     if (in_array($domain, $domains, true)) {
                         return true;
                     }
@@ -141,6 +143,24 @@ class Proudcity_GF_Blacklist
         return false;
 
     } // blacklist
+
+    /**
+     * Turns a comma separated env value into a normalized list
+     *
+     * Trims and lowercases each entry and drops empties so "a@x.com, B@y.com,"
+     * matches the same way as "a@x.com,b@y.com".
+     *
+     * @since 2026.11.06
+     *
+     * @param string $value Comma separated list from the environment
+     * @return array
+     */
+    private static function parse_list($value)
+    {
+        $items = array_map('strtolower', array_map('trim', explode(',', $value)));
+
+        return array_values(array_filter($items, 'strlen'));
+    } // parse_list
 
     /**
      * Gives us any constants we need in the plugin

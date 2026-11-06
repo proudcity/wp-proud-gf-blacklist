@@ -11,3 +11,5 @@ Added ability to blacklist a domain with `PC_GF_DOMAIN_BLACKLIST`
 -  name: PC_GF_DOMAIN_BLACKLIST
    value: one.com,two.com
 ```
+
+Entries are trimmed and case-insensitive, so `one.com, Two.com` works the same as `one.com,two.com`.
