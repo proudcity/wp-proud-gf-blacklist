@@ -103,13 +103,18 @@ class Proudcity_GF_Blacklist
 
             // - name: PC_GF_ALLOWED_COUNTRIES
             //   value: US
-            $allowed_countries = self::parse_list((string) getenv('PC_GF_ALLOWED_COUNTRIES'));
+            $allowed_countries = self::get_allowed_countries();
 
             if (! empty($allowed_countries)) {
                 $country = self::get_request_country();
 
                 if (null !== $country && ! in_array($country, $allowed_countries, true)) {
-                    self::flag_spam($form, 'Country not allowed (' . $country . ')');
+                    // forms that don't store IPs don't get the location stored either
+                    $reason = rgars($form, 'personalData/preventIP')
+                        ? 'Country not allowed'
+                        : 'Country not allowed (' . $country . ')';
+
+                    self::flag_spam($form, $reason);
                     return true;
                 }
             }
@@ -232,6 +237,32 @@ class Proudcity_GF_Blacklist
     } // get_submitter_ip
 
     /**
+     * Gets the allowed country codes from PC_GF_ALLOWED_COUNTRIES
+     *
+     * Keeps only two letter codes. If the variable is set but nothing valid is
+     * left ("USA", "US CA") the check is turned off instead of sending every
+     * entry to spam, and the problem is logged.
+     *
+     * @since 2026.11.17
+     *
+     * @return array Lowercase two letter codes, empty when the check is off
+     */
+    private static function get_allowed_countries()
+    {
+        $items = self::parse_list((string) getenv('PC_GF_ALLOWED_COUNTRIES'));
+
+        $valid = array_values(array_filter($items, function ($code) {
+            return 1 === preg_match('/^[a-z]{2}$/', $code);
+        }));
+
+        if (count($valid) !== count($items)) {
+            error_log('wp-proud-gf-blacklist: ignoring invalid PC_GF_ALLOWED_COUNTRIES entries: ' . implode(',', array_diff($items, $valid)));
+        }
+
+        return $valid;
+    } // get_allowed_countries
+
+    /**
      * Gets the visitor country set by the ingress in X-PC-Country
      *
      * The ingress replaces any client supplied value. Anything that is not two
@@ -291,24 +322,30 @@ class Proudcity_GF_Blacklist
     private static function ip_matches($ip, $rule)
     {
         $parts   = explode('/', $rule, 2);
-        $ip_bin  = @inet_pton($ip);
+        $ip_bin  = self::to_ipv4_if_mapped(@inet_pton($ip));
         $net_bin = @inet_pton($parts[0]);
 
-        if (false === $ip_bin || false === $net_bin || strlen($ip_bin) !== strlen($net_bin)) {
+        if (false === $ip_bin || false === $net_bin) {
             return false;
         }
 
         if (1 === count($parts)) {
-            return $ip_bin === $net_bin;
+            $net_bin = self::to_ipv4_if_mapped($net_bin);
+
+            return strlen($ip_bin) === strlen($net_bin) && $ip_bin === $net_bin;
         }
 
-        if (! ctype_digit($parts[1])) {
+        if (strlen($ip_bin) !== strlen($net_bin) || ! ctype_digit($parts[1])) {
             return false;
         }
 
         $prefix = (int) $parts[1];
 
-        if ($prefix > strlen($net_bin) * 8) {
+        // ranges broader than /8 (IPv4) or /16 (IPv6) are almost always a typo
+        // and would match most of the internet, so they are ignored
+        $min_prefix = 4 === strlen($net_bin) ? 8 : 16;
+
+        if ($prefix < $min_prefix || $prefix > strlen($net_bin) * 8) {
             return false;
         }
 
@@ -328,6 +365,25 @@ class Proudcity_GF_Blacklist
 
         return (ord($ip_bin[$bytes]) & $mask) === (ord($net_bin[$bytes]) & $mask);
     } // ip_matches
+
+    /**
+     * Turns a packed IPv4-mapped IPv6 address (::ffff:1.2.3.4) into packed IPv4
+     *
+     * So a mapped address still matches IPv4 rules.
+     *
+     * @since 2026.11.17
+     *
+     * @param string|false $bin Packed address from inet_pton()
+     * @return string|false
+     */
+    private static function to_ipv4_if_mapped($bin)
+    {
+        if (is_string($bin) && 16 === strlen($bin) && str_repeat("\0", 10) . "\xff\xff" === substr($bin, 0, 12)) {
+            return substr($bin, 12);
+        }
+
+        return $bin;
+    } // to_ipv4_if_mapped
 
     /**
      * Gives us any constants we need in the plugin

@@ -43,4 +43,7 @@ Notes:
 - The GeoIP map is IPv4 only, so some IPv6 visitors have an unknown country and are allowed.
 - The allowlist skips only the IP and country checks. Email and domain checks still apply.
 - Invalid entries (bad IPs, bad prefixes) are ignored.
+- Country codes are ISO 3166-1 alpha-2, comma separated: `GB` not `UK`, and US territories (`PR`, `GU`, `VI`, `AS`, `MP`) are separate codes. Anything that isn't two letters is ignored and logged. If nothing valid is left (`USA`, `US CA`) the country check is off rather than sending every entry to spam.
+- Ranges broader than `/8` (IPv4) or `/16` (IPv6) are ignored, so a typo like `0.0.0.0/0` can't match everyone.
+- The IP checks only work when the entry IP is the visitor's real IP. On a Cloudflare-proxied site, check the host is in the ingress `cf-proxied-hosts` list first, or entries show Cloudflare edge IPs and the country is the edge's.
 - Unset variables turn the feature off.
