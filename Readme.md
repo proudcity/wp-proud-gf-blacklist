@@ -13,3 +13,34 @@ Added ability to blacklist a domain with `PC_GF_DOMAIN_BLACKLIST`
 ```
 
 Entries are trimmed and case-insensitive, so `one.com, Two.com` works the same as `one.com,two.com`.
+
+## Block by IP or country
+
+Define `PC_GF_IP_BLACKLIST` to send entries from specific IPs or ranges to spam. It takes a comma separated list of single IPs and CIDR ranges, IPv4 and IPv6. The submitter IP comes from the entry, or from the request when the form doesn't store IPs.
+
+```yaml
+-  name: PC_GF_IP_BLACKLIST
+   value: 203.0.113.7,198.51.100.0/24,2001:db8::/32
+```
+
+Define `PC_GF_ALLOWED_COUNTRIES` to send entries from any other country to spam. It takes two letter country codes, case-insensitive.
+
+```yaml
+-  name: PC_GF_ALLOWED_COUNTRIES
+   value: US
+```
+
+Define `PC_GF_IP_ALLOWLIST` for IPs or ranges that skip the IP blacklist and country checks, for example to test a country restricted site.
+
+```yaml
+-  name: PC_GF_IP_ALLOWLIST
+   value: 207.6.84.153
+```
+
+Notes:
+
+- The country comes from the `X-PC-Country` header set by our ingress. If the country is unknown (`--`, `-`, empty or missing header) the entry is allowed.
+- The GeoIP map is IPv4 only, so some IPv6 visitors have an unknown country and are allowed.
+- The allowlist skips only the IP and country checks. Email and domain checks still apply.
+- Invalid entries (bad IPs, bad prefixes) are ignored.
+- Unset variables turn the feature off.

@@ -2,8 +2,8 @@
 /*
 Plugin Name: WP Proud Gravity Forms Blacklist
 Plugin URI: https://proudcity.com
-Description: Blacklist individual emails or domains in Gravity Forms
-Version: 2026.11.06.1
+Description: Blacklist individual emails, domains, IPs or countries in Gravity Forms
+Version: 2026.11.17.1
 Author: ProudCity
 Author URI: https://proudcity.com
 License: GPLv2 or later
@@ -89,6 +89,32 @@ class Proudcity_GF_Blacklist
             return $is_spam;
         }
 
+        // IP and country checks, allowlisted IPs skip these but not the email/domain checks
+        $ip          = self::get_submitter_ip($entry);
+        $allowlisted = '' !== $ip && self::ip_in_list($ip, self::parse_list((string) getenv('PC_GF_IP_ALLOWLIST')));
+
+        if (! $allowlisted) {
+            // - name: PC_GF_IP_BLACKLIST
+            //   value: 203.0.113.7,198.51.100.0/24,2001:db8::/32
+            if ('' !== $ip && self::ip_in_list($ip, self::parse_list((string) getenv('PC_GF_IP_BLACKLIST')))) {
+                self::flag_spam($form, 'IP blacklist');
+                return true;
+            }
+
+            // - name: PC_GF_ALLOWED_COUNTRIES
+            //   value: US
+            $allowed_countries = self::parse_list((string) getenv('PC_GF_ALLOWED_COUNTRIES'));
+
+            if (! empty($allowed_countries)) {
+                $country = self::get_request_country();
+
+                if (null !== $country && ! in_array($country, $allowed_countries, true)) {
+                    self::flag_spam($form, 'Country not allowed (' . $country . ')');
+                    return true;
+                }
+            }
+        }
+
         // domains are defined in the site yaml deploy file
         // - name: PC_GF_DOMAIN_BLACKLIST
         //   value: domain.com, domain2.com
@@ -161,6 +187,147 @@ class Proudcity_GF_Blacklist
 
         return array_values(array_filter($items, 'strlen'));
     } // parse_list
+
+    /**
+     * Records which rule marked the entry as spam in the Gravity Forms spam note
+     *
+     * Never pass the IP in the reason, forms with "Prevent the storage of IP addresses"
+     * opted out of keeping it.
+     *
+     * @since 2026.11.17
+     *
+     * @param array  $form   The form object
+     * @param string $reason Short description of the rule that fired
+     */
+    private static function flag_spam($form, $reason)
+    {
+        if (class_exists('GFCommon') && method_exists('GFCommon', 'set_spam_filter')) {
+            GFCommon::set_spam_filter(rgar($form, 'id'), 'PC GF Blacklist', $reason);
+        }
+    } // flag_spam
+
+    /**
+     * Gets the submitter IP from the entry, falling back to the request IP
+     *
+     * Forms with "Prevent the storage of IP addresses" leave the entry ip empty.
+     *
+     * @since 2026.11.17
+     *
+     * @param array $entry The form entry
+     * @return string Valid IP address or an empty string when unknown
+     */
+    private static function get_submitter_ip($entry)
+    {
+        $ip = trim((string) rgar($entry, 'ip'));
+
+        if ('' === $ip && class_exists('GFFormsModel')) {
+            $ip = trim((string) GFFormsModel::get_ip());
+        }
+
+        if (false === filter_var($ip, FILTER_VALIDATE_IP)) {
+            return '';
+        }
+
+        return $ip;
+    } // get_submitter_ip
+
+    /**
+     * Gets the visitor country set by the ingress in X-PC-Country
+     *
+     * The ingress replaces any client supplied value. Anything that is not two
+     * letters ("--", "-", empty, missing) is unknown and unknown is allowed.
+     *
+     * @since 2026.11.17
+     *
+     * @return string|null Lowercase two letter country code or null when unknown
+     */
+    private static function get_request_country()
+    {
+        if (! isset($_SERVER['HTTP_X_PC_COUNTRY'])) {
+            return null;
+        }
+
+        $country = strtolower(trim((string) $_SERVER['HTTP_X_PC_COUNTRY']));
+
+        if (! preg_match('/^[a-z]{2}$/', $country)) {
+            return null;
+        }
+
+        return $country;
+    } // get_request_country
+
+    /**
+     * Checks if an IP matches any IP or CIDR in the list
+     *
+     * @since 2026.11.17
+     *
+     * @param string $ip   The IP to check
+     * @param array  $list IPs and CIDR ranges
+     * @return bool
+     */
+    private static function ip_in_list($ip, array $list)
+    {
+        foreach ($list as $rule) {
+            if (self::ip_matches($ip, $rule)) {
+                return true;
+            }
+        }
+
+        return false;
+    } // ip_in_list
+
+    /**
+     * Checks an IP against a single IP or CIDR rule, IPv4 or IPv6
+     *
+     * Compares packed binary addresses so differently written IPv6 forms match.
+     * Different families never match and invalid rules are ignored.
+     *
+     * @since 2026.11.17
+     *
+     * @param string $ip   The IP to check
+     * @param string $rule An IP or CIDR range
+     * @return bool
+     */
+    private static function ip_matches($ip, $rule)
+    {
+        $parts   = explode('/', $rule, 2);
+        $ip_bin  = @inet_pton($ip);
+        $net_bin = @inet_pton($parts[0]);
+
+        if (false === $ip_bin || false === $net_bin || strlen($ip_bin) !== strlen($net_bin)) {
+            return false;
+        }
+
+        if (1 === count($parts)) {
+            return $ip_bin === $net_bin;
+        }
+
+        if (! ctype_digit($parts[1])) {
+            return false;
+        }
+
+        $prefix = (int) $parts[1];
+
+        if ($prefix > strlen($net_bin) * 8) {
+            return false;
+        }
+
+        $bytes = intdiv($prefix, 8);
+
+        if (substr($ip_bin, 0, $bytes) !== substr($net_bin, 0, $bytes)) {
+            return false;
+        }
+
+        $remainder = $prefix % 8;
+
+        if (0 === $remainder) {
+            return true;
+        }
+
+        $mask = (0xFF << (8 - $remainder)) & 0xFF;
+
+        return (ord($ip_bin[$bytes]) & $mask) === (ord($net_bin[$bytes]) & $mask);
+    } // ip_matches
 
     /**
      * Gives us any constants we need in the plugin
